@@ -1,0 +1,19 @@
+{
+    "config": {
+      "step": {
+        "user": {
+          "title": "Kaleidescape Setup",
+          "data": {
+            "host": "Host"
+          }
+        }
+      },
+      "abort": {
+          "already_configured": "Device is already configured."
+      },
+      "error": {
+        "invalid_host": "Invalid hostname or IP address",
+        "cannot_connect": "Failed to connect"
+      }
+    }
+  }

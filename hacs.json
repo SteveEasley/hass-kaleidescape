@@ -1,0 +1,8 @@
+{
+    "name": "Kalaiedescape Integration",
+    "render_readme": true,
+    "domains": [
+        "media_player"
+    ],
+    "homeassistant": "2021.10.0"
+}
