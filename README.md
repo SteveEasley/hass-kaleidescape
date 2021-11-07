@@ -7,8 +7,6 @@ The Kaleidescape integration allows for the automation of Kaleidescape movie pla
 - A change in aspect ratio controls a masking system.
 - A change in video resolution controls a lens system or video scaler.
 
-![Screenshot of Media Player](media_player.png)
-
 ## Supported Models
 
 This integration is intended for the automation of Kaleidescape players with a movie zone. These players will automatically have a respective Home Assistant media player added. Any music zone in a player is ignored at this time.

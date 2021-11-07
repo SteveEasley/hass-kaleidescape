@@ -19,8 +19,8 @@ from homeassistant.components.media_player.const import (
 from homeassistant.const import STATE_IDLE, STATE_OFF, STATE_PAUSED, STATE_PLAYING
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.util import utcnow
-from homeassistant.components.media_player import PLATFORM_SCHEMA
 
 
 from .const import (
@@ -35,7 +35,6 @@ if TYPE_CHECKING:
 
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity import DeviceInfo
 
 SUPPORTED_FEATURES = (
     SUPPORT_TURN_ON | SUPPORT_TURN_OFF | SUPPORT_PLAY | SUPPORT_PAUSE | SUPPORT_STOP
@@ -136,14 +135,15 @@ class KaleidescapeMediaPlayer(MediaPlayerEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Returns device specific attributes."""
-        return {
-            "identifiers": {(KALEIDESCAPE_DOMAIN, self._device.serial_number)},
-            "name": self.name,
-            "model": self._device.system.type,
-            "manufacturer": KALEIDESCAPE_NAME,
-            "sw_version": f"{self._device.system.kos}",
-            "suggested_area": "Theater",
-        }
+        return DeviceInfo(
+            identifiers={(KALEIDESCAPE_DOMAIN, self._device.serial_number)},
+            name=self.name,
+            model=self._device.system.type,
+            manufacturer=KALEIDESCAPE_NAME,
+            sw_version=f"{self._device.system.kos}",
+            suggested_area="Theater",
+            configuration_url=f"http://{self._device.connection.host}"
+        )
 
     @property
     def extra_state_attributes(self) -> dict:
