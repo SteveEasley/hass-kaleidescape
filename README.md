@@ -23,7 +23,7 @@ Currently this integration is not included in Home Assistant. The goal is to req
 
 ### HACS Installation
 
-[HACS: Home Assistant Community Store](https://hacs.xyz/) is a very cool integration that manages the installation of community features not included in Home Assistant. To add this Kaleidescapae integration via HACS you just need to add the its github repository to your list of custom HACS repositories.
+[HACS: Home Assistant Community Store](https://hacs.xyz/) is a very cool integration that manages the installation of community features not included in Home Assistant. To add this Kaleidescapae integration via HACS you just need to add its github repository to your list of custom HACS repositories.
 
 Steps:
 
@@ -33,13 +33,13 @@ Steps:
 
 ### Manual Installation
 
-Use this installation method if you prefer to manually install the integration (vs the HACS method).
+Use this installation method if you prefer to manually install the integration.
 
-1. Open the directory with your Home Assistant configuration (where your configuration.yaml is located, usually in ~/.homeassistant/).
+1. Open the directory with your Home Assistant configuration (where your `configuration.yaml` is located).
 2. If you don't have a `custom_components` directory there, you need to create one. You should end up with this new directory in the same directory as your existing `configuration.yaml`.
 3. Download  the [ZIP archive](https://github.com/SteveEasley/hass-kaleidescape/archive/refs/heads/dev.zip) of the code.
 4. Unpack it.
-5. Copy the `custom_components/kaleidescape` directory from the unpacked archive to your Home Assistant `custom_components` directory.
+5. Copy the `custom_components/kaleidescape` directory from the unpacked archive to your Home Assistant `custom_components` directory. You should end up with a directory called `kaleidescape` in your `custom_components` directory.
 6. Restart Home Assistant.
 
 ### Integration Setup
@@ -49,16 +49,17 @@ After following one of the two installation methods above, you are ready to setu
 1. Browse to your Home Assistant UI.
 2. Navigate to `Configuration` | `Integrations`.
 3. In the bottom right, click on the `Add Integration` button.
-4. Search for `Kaleidescape` and click it.
-5. The default hostname `my-kaleidescape.local` should connect you device. If that doesn't work try removing the `.local` part. If that doesn't work see [Accessing the Browser Interface](https://support.kaleidescape.com/article/Accessing-the-Browser-Interface).
+4. Search for `Kaleidescape` and select it.
+5. The default hostname `my-kaleidescape.local` should connect to the device. If that doesn't work try removing the `.local` part. If that doesn't work see [Accessing the Browser Interface](https://support.kaleidescape.com/article/Accessing-the-Browser-Interface).
 
 ## Example Automation
 
-Here are two [automations](https://www.home-assistant.io/docs/automation/trigger/#state-trigger) to activate a lights down scene when the player enters the content of a movie, and a lights up scene when leaving the content of a movie (such as stopping or the credits beginning). It also handles paused and playing states.
+Here are two [automations](https://www.home-assistant.io/docs/automation/trigger/#state-trigger) to activate a lights down scene when the player enters the content of a movie, and a lights up scene when leaving the content of a movie (such as the credits beginning). It also handles stopped, paused and playing states.
 
 Note this example is in yaml format. But feel free to use the UI to create them instead.
 
 ```yaml
+# homeassistant/automations.yaml
 - id: kaileidescape_lights_up
   alias: Kaleidescape Lights Up
   trigger:
