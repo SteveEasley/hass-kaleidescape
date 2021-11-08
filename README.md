@@ -37,7 +37,7 @@ Use this installation method if you prefer to manually install the integration.
 
 1. Open the directory with your Home Assistant configuration (where your `configuration.yaml` is located).
 2. If you don't have a `custom_components` directory there, you need to create one. You should end up with this new directory in the same directory as your existing `configuration.yaml`.
-3. Download  the [ZIP archive](https://github.com/SteveEasley/hass-kaleidescape/archive/refs/heads/dev.zip) of the code.
+3. Download  the [ZIP archive](https://github.com/SteveEasley/hass-kaleidescape/archive/refs/heads/main.zip) of the code.
 4. Unpack it.
 5. Copy the `custom_components/kaleidescape` directory from the unpacked archive to your Home Assistant `custom_components` directory. You should end up with a directory called `kaleidescape` in your `custom_components` directory.
 6. Restart Home Assistant.
