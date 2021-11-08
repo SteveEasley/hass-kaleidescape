@@ -4,7 +4,7 @@
   "version": "2021.11.0",
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/kaleidescape",
-  "requirements": ["git+https://github.com/SteveEasley/pykaleidescape.git@dev#pykaleidescape==2021.11.0"],
+  "requirements": ["git+https://github.com/SteveEasley/pykaleidescape.git@main#pykaleidescape==2021.11.0"],
   "codeowners": [
     "@SteveEasley"
   ],
