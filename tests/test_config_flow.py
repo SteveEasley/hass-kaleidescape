@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 
 from homeassistant.components.kaleidescape.const import DEFAULT_HOST, DOMAIN
 from homeassistant.config_entries import SOURCE_USER
-from homeassistant.const import CONF_HOST
+from homeassistant.const import CONF_HOST, CONF_ID
 from homeassistant.data_entry_flow import (
     RESULT_TYPE_ABORT,
     RESULT_TYPE_CREATE_ENTRY,
@@ -35,6 +35,7 @@ async def test_config_flow_success(
     )
     assert result["type"] == RESULT_TYPE_CREATE_ENTRY
     assert "data" in result
+    assert result["data"][CONF_ID] == "123456789"
     assert result["data"][CONF_HOST] == "127.0.0.1"
 
 
@@ -50,7 +51,8 @@ async def test_config_flow_host_default(
     )
     assert result["type"] == RESULT_TYPE_CREATE_ENTRY
     assert "data" in result
-    assert result["data"][CONF_HOST] == DEFAULT_HOST
+    assert result["data"][CONF_ID] == "123456789"
+    assert result["data"][CONF_HOST] == "127.0.0.1"
 
 
 async def test_config_flow_host_empty(
@@ -96,9 +98,7 @@ async def test_config_flow_device_exists_abort(
 ) -> None:
     """Test flow aborts if device already configured."""
     result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": SOURCE_USER},
-        data={CONF_HOST: "127.0.0.1"},
+        DOMAIN, context={"source": SOURCE_USER}, data={CONF_HOST: "127.0.0.1"}
     )
     assert result["type"] == RESULT_TYPE_ABORT
     assert result["reason"] == "already_configured"

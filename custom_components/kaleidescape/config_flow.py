@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_HOST
+from homeassistant.const import CONF_HOST, CONF_ID
 from homeassistant.exceptions import HomeAssistantError
 
-from . import validate_connect, validate_host
+from . import get_system_info, validate_host
 from .const import DEFAULT_HOST, DOMAIN
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class KaleidescapeConfigFlow(config_entries.ConfigFlow):
     """Config flow for Kaleidescape integration"""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         """Handle the user step."""
@@ -33,20 +33,20 @@ class KaleidescapeConfigFlow(config_entries.ConfigFlow):
                 host = user_input[CONF_HOST].strip()
 
                 if validate_host(host) is False:
-                    raise HostError
+                    raise HostnameError
 
-                if await validate_connect(host) is False:
-                    raise ConnectError
+                system = await get_system_info(host)
 
-                await self.async_set_unique_id(DOMAIN)
+                await self.async_set_unique_id(system["id"])
                 self._abort_if_unique_id_configured()
 
                 return self.async_create_entry(
-                    title="Kaleidescape", data={CONF_HOST: host}
+                    title=f"Kaleidescape ({system['name']})",
+                    data={CONF_ID: system["id"], CONF_HOST: system["ip"]},
                 )
-            except HostError:
+            except HostnameError:
                 errors["base"] = "invalid_host"
-            except ConnectError:
+            except (ConnectionError, ConnectionRefusedError):
                 errors["base"] = "cannot_connect"
 
         return self.async_show_form(
@@ -56,9 +56,5 @@ class KaleidescapeConfigFlow(config_entries.ConfigFlow):
         )
 
 
-class HostError(HomeAssistantError):
+class HostnameError(HomeAssistantError):
     """Error to indicate invalid host value."""
-
-
-class ConnectError(HomeAssistantError):
-    """Error to indicate unable to connect to host."""

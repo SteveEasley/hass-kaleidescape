@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 from kaleidescape import const as kaleidescape_const
 from kaleidescape.device import Movie
-import pytest
 
 from homeassistant.components.media_player.const import DOMAIN as MEDIA_PLAYER_DOMAIN
 from homeassistant.const import (
@@ -30,7 +29,6 @@ if TYPE_CHECKING:
     from tests.common import MockConfigEntry
 
 
-@pytest.mark.parametrize("mock_kaleidescape", [[("123", True)]], indirect=True)
 async def test_entity(
     hass: HomeAssistant,
     mock_kaleidescape: MagicMock,
@@ -41,15 +39,21 @@ async def test_entity(
     assert media_player.state == STATE_OFF
     assert media_player.attributes["friendly_name"] == "Device 123 Kaleidescape"
 
+    # For coverage report
+    mock_kaleidescape.dispatcher.send(
+        kaleidescape_const.SIGNAL_CONTROLLER_EVENT,
+        kaleidescape_const.EVENT_CONTROLLER_UPDATED,
+    )
+    await hass.async_block_till_done()
 
-@pytest.mark.parametrize("mock_kaleidescape", [[("123", True)]], indirect=True)
+
 async def test_update_state(
     hass: HomeAssistant,
     mock_kaleidescape: MagicMock,
     mock_integration: MockConfigEntry,
 ) -> None:
     """Tests dispatched signals update player."""
-    device: AsyncMock = await mock_kaleidescape.get_device()
+    device: AsyncMock = await mock_kaleidescape.get_local_device()
     entity = hass.states.get("media_player.device_123_kaleidescape")
     assert entity.state == STATE_OFF
 
@@ -113,14 +117,13 @@ async def test_update_state(
     assert entity.state == STATE_PAUSED
 
 
-@pytest.mark.parametrize("mock_kaleidescape", [[("123", True)]], indirect=True)
 async def test_turn_on(
     hass: HomeAssistant,
     mock_kaleidescape: MagicMock,
     mock_integration: MockConfigEntry,
 ) -> None:
     """Test turn on service call."""
-    device: AsyncMock = await mock_kaleidescape.get_device()
+    device: AsyncMock = await mock_kaleidescape.get_local_device()
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_TURN_ON,
@@ -130,14 +133,13 @@ async def test_turn_on(
     assert device.leave_standby.call_count == 1
 
 
-@pytest.mark.parametrize("mock_kaleidescape", [[("123", True)]], indirect=True)
 async def test_turn_off(
     hass: HomeAssistant,
     mock_kaleidescape: MagicMock,
     mock_integration: MockConfigEntry,
 ) -> None:
     """Test turn off service call."""
-    device: AsyncMock = await mock_kaleidescape.get_device()
+    device: AsyncMock = await mock_kaleidescape.get_local_device()
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_TURN_OFF,
@@ -147,14 +149,13 @@ async def test_turn_off(
     assert device.enter_standby.call_count == 1
 
 
-@pytest.mark.parametrize("mock_kaleidescape", [[("123", True)]], indirect=True)
 async def test_play(
     hass: HomeAssistant,
     mock_kaleidescape: MagicMock,
     mock_integration: MockConfigEntry,
 ) -> None:
     """Test play service call."""
-    device: AsyncMock = await mock_kaleidescape.get_device()
+    device: AsyncMock = await mock_kaleidescape.get_local_device()
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_MEDIA_PLAY,
@@ -164,14 +165,13 @@ async def test_play(
     assert device.play.call_count == 1
 
 
-@pytest.mark.parametrize("mock_kaleidescape", [[("123", True)]], indirect=True)
 async def test_pause(
     hass: HomeAssistant,
     mock_kaleidescape: MagicMock,
     mock_integration: MockConfigEntry,
 ) -> None:
     """Test pause service call."""
-    device: AsyncMock = await mock_kaleidescape.get_device()
+    device: AsyncMock = await mock_kaleidescape.get_local_device()
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_MEDIA_PAUSE,
@@ -181,14 +181,13 @@ async def test_pause(
     assert device.pause.call_count == 1
 
 
-@pytest.mark.parametrize("mock_kaleidescape", [[("123", True)]], indirect=True)
 async def test_stop(
     hass: HomeAssistant,
     mock_kaleidescape: MagicMock,
     mock_integration: MockConfigEntry,
 ) -> None:
     """Test stop service call."""
-    device: AsyncMock = await mock_kaleidescape.get_device()
+    device: AsyncMock = await mock_kaleidescape.get_local_device()
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_MEDIA_STOP,
@@ -198,7 +197,6 @@ async def test_stop(
     assert device.stop.call_count == 1
 
 
-@pytest.mark.parametrize("mock_kaleidescape", [[("123", True)]], indirect=True)
 async def test_device(
     hass: HomeAssistant,
     mock_kaleidescape: MagicMock,

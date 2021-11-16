@@ -8,11 +8,11 @@ from unittest.mock import AsyncMock, patch
 
 from kaleidescape import Device as KaleidescapeDevice, Dispatcher, const
 from kaleidescape.connection import Connection
-from kaleidescape.device import Automation, Capabilities, Movie, Power, System
+from kaleidescape.device import Automation, Movie, Power, System
 import pytest
 
 from homeassistant.components.kaleidescape.const import DOMAIN
-from homeassistant.const import CONF_HOST
+from homeassistant.const import CONF_HOST, CONF_ID
 
 from tests.common import MockConfigEntry
 
@@ -26,25 +26,24 @@ def create_kaleidescape_device(
     """Returns a mock Kaleidescape device."""
     device = AsyncMock(KaleidescapeDevice)
     device.dispatcher = kaleidescape.dispatcher
-    device.is_local = is_local
     device.disabled = False
     device.device_id = const.LOCAL_CPDID if is_local else f"#{serial_number}"
     device.serial_number = serial_number
-    device.connected = True
-    device.is_device = lambda d: d == f"#{serial_number}"
+    device.is_connected = True
+    device.is_local = is_local
+    device.has_device_id = lambda d: d == f"#{serial_number}"
+    device.is_server_only = False
+    device.is_movie_player = True
     device.system = System(
+        system_id="123456789",
+        system_name="Cinema",
+        system_ip_address="127.0.0.1",
+        device_ip_address="127.0.0.1",
+        serial_number=serial_number,
         type="Strato",
         protocol=16,
         kos="10.4.2-19218",
-        name=f"Device {serial_number}",
-        serial_number=serial_number,
-        ip_address="127.0.0.1",
-    )
-    device.capabilities = Capabilities(
-        osd=True,
-        movies=True,
-        music=False,
-        store=True,
+        player_name=f"Device {serial_number}",
         movie_zones=1,
         music_zones=1,
     )
@@ -69,12 +68,17 @@ def fixture_mock_kaleidescape(
         kaleidescape.dispatcher = Dispatcher()
 
         devices: list[AsyncMock] = []
-        params = request.param if hasattr(request, "param") else []
+        if hasattr(request, "param"):
+            params = request.param
+        else:
+            params = [("123", True)]
         for args in params:
             devices.append(create_kaleidescape_device(kaleidescape, *args))
         kaleidescape.get_devices = AsyncMock(return_value=devices)
         if len(devices) > 0:
-            kaleidescape.get_device = AsyncMock(return_value=devices[0])
+            kaleidescape.get_local_device = AsyncMock(return_value=devices[0])
+        else:
+            kaleidescape.get_local_device = AsyncMock(return_value=None)
 
         yield kaleidescape
 
@@ -83,7 +87,10 @@ def fixture_mock_kaleidescape(
 async def fixture_mock_config_entry() -> Generator[None, MockConfigEntry, None]:
     """Returns a mock config entry."""
     yield MockConfigEntry(
-        domain=DOMAIN, unique_id=DOMAIN, data={CONF_HOST: "127.0.0.1"}
+        domain=DOMAIN,
+        unique_id="123456789",
+        version=2,
+        data={CONF_ID: "123456789", CONF_HOST: "127.0.0.1"},
     )
 
 
