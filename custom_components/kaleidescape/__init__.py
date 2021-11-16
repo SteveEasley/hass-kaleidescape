@@ -69,7 +69,7 @@ async def async_migrate_entry(hass, entry: ConfigEntry):
         hass.config_entries.async_update_entry(
             entry,
             unique_id=system["id"],
-            title=system["name"],
+            title=f"Kaleidescape ({system['name']})",
             data={CONF_ID: system["id"], CONF_HOST: system["ip"]},
         )
 
