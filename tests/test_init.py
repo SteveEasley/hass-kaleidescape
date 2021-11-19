@@ -121,4 +121,3 @@ async def test_version_1_migration(
     await hass.async_block_till_done()
     assert mock_config_entry.state is ConfigEntryState.LOADED
     assert mock_config_entry.version == 2
-    assert mock_kaleidescape.connect.call_count == 2

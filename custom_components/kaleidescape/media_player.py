@@ -24,7 +24,7 @@ from homeassistant.util import utcnow
 from .const import DOMAIN as KALEIDESCAPE_DOMAIN, NAME as KALEIDESCAPE_NAME
 
 if TYPE_CHECKING:
-    from kaleidescape import Device as KaleidescapeDevice, Kaleidescape
+    from kaleidescape import Kaleidescape, Device as KaleidescapeDevice
 
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
@@ -138,7 +138,7 @@ class KaleidescapeMediaPlayer(MediaPlayerEntity):
             name=self.name,
             model=self._device.system.type,
             manufacturer=KALEIDESCAPE_NAME,
-            sw_version=f"{self._device.system.kos}",
+            sw_version=f"{self._device.system.kos_version}",
             suggested_area="Theater",
             configuration_url=f"http://{self._device.connection.ip_address}",
         )
@@ -166,7 +166,7 @@ class KaleidescapeMediaPlayer(MediaPlayerEntity):
     @property
     def name(self) -> str:
         """Return the name of the device."""
-        return f"{self._device.system.player_name} {KALEIDESCAPE_NAME}"
+        return f"{self._device.system.friendly_name} {KALEIDESCAPE_NAME}"
 
     @property
     def should_poll(self) -> bool:

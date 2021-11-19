@@ -83,7 +83,7 @@ async def test_config_flow_host_bad_connect(
     hass: HomeAssistant, mock_kaleidescape: AsyncMock
 ) -> None:
     """Test errors when cant connect to host."""
-    mock_kaleidescape.connect.side_effect = ConnectionError
+    mock_kaleidescape.discover.side_effect = ConnectionError
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}, data={"host": "127.0.0.1"}
     )

@@ -16,6 +16,8 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from .const import DOMAIN, MANAGER, NAME as KALEIDESCAPE_NAME
 
 if TYPE_CHECKING:
+    from kaleidescape import SystemInfo
+
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
@@ -68,9 +70,9 @@ async def async_migrate_entry(hass, entry: ConfigEntry):
         entry.version = 2
         hass.config_entries.async_update_entry(
             entry,
-            unique_id=system["id"],
-            title=f"Kaleidescape ({system['name']})",
-            data={CONF_ID: system["id"], CONF_HOST: system["ip"]},
+            unique_id=system.system_id,
+            title=f"Kaleidescape ({system.friendly_name})",
+            data={CONF_ID: system.system_id, CONF_HOST: system.ip_address},
         )
 
     _LOGGER.info("Migration to version %s successful", entry.version)
@@ -83,14 +85,8 @@ def validate_host(host: str) -> bool:
     return re.search(r"^[0-9A-Za-z.\-]+$", host) is not None
 
 
-async def get_system_info(host: str) -> dict[str, str]:
+async def get_system_info(host: str) -> SystemInfo:
     """Returns system info if host is valid."""
     controller = Kaleidescape(host, timeout=5)
-    await controller.connect()
-    device = await controller.get_local_device()
-    await controller.disconnect()
-    return {
-        "id": device.system.system_id,
-        "ip": device.system.system_ip_address,
-        "name": device.system.system_name,
-    }
+    system_id = await controller.discover()
+    return controller.systems[system_id]

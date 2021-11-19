@@ -6,7 +6,7 @@ from collections.abc import Generator
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
-from kaleidescape import Device as KaleidescapeDevice, Dispatcher, const
+from kaleidescape import SystemInfo, Device as KaleidescapeDevice, Dispatcher, const
 from kaleidescape.connection import Connection
 from kaleidescape.device import Automation, Movie, Power, System
 import pytest
@@ -35,15 +35,12 @@ def create_kaleidescape_device(
     device.is_server_only = False
     device.is_movie_player = True
     device.system = System(
-        system_id="123456789",
-        system_name="Cinema",
-        system_ip_address="127.0.0.1",
-        device_ip_address="127.0.0.1",
+        ip_address="127.0.0.1",
         serial_number=serial_number,
         type="Strato",
         protocol=16,
-        kos="10.4.2-19218",
-        player_name=f"Device {serial_number}",
+        kos_version="10.4.2-19218",
+        friendly_name=f"Device {serial_number}",
         movie_zones=1,
         music_zones=1,
     )
@@ -79,6 +76,18 @@ def fixture_mock_kaleidescape(
             kaleidescape.get_local_device = AsyncMock(return_value=devices[0])
         else:
             kaleidescape.get_local_device = AsyncMock(return_value=None)
+
+        kaleidescape.discover = AsyncMock(return_value="123456789")
+        kaleidescape.systems = {
+            "123456789": SystemInfo(
+                system_id="123456789",
+                serial_number=devices[0].system.serial_number,
+                ip_address=devices[0].system.ip_address,
+                kos_version=devices[0].system.kos_version,
+                friendly_name="Cinema",
+                is_paired=False,
+            )
+        }
 
         yield kaleidescape
 

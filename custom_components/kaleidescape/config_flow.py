@@ -37,12 +37,12 @@ class KaleidescapeConfigFlow(config_entries.ConfigFlow):
 
                 system = await get_system_info(host)
 
-                await self.async_set_unique_id(system["id"])
+                await self.async_set_unique_id(system.system_id)
                 self._abort_if_unique_id_configured()
 
                 return self.async_create_entry(
-                    title=f"Kaleidescape ({system['name']})",
-                    data={CONF_ID: system["id"], CONF_HOST: system["ip"]},
+                    title=f"Kaleidescape ({system.friendly_name})",
+                    data={CONF_ID: system.system_id, CONF_HOST: system.ip_address},
                 )
             except HostnameError:
                 errors["base"] = "invalid_host"
