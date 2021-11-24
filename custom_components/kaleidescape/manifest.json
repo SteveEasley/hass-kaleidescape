@@ -1,7 +1,7 @@
 {
   "domain": "kaleidescape",
   "name": "Kaleidescape",
-  "version": "2021.11.2",
+  "version": "2021.11.3",
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/kaleidescape",
   "requirements": ["git+https://github.com/SteveEasley/pykaleidescape.git@main#pykaleidescape==2021.11.3"],
