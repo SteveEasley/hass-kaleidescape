@@ -10,27 +10,36 @@ from kaleidescape import const as kaleidescape_const
 
 from homeassistant.components.media_player import MediaPlayerEntity
 from homeassistant.components.media_player.const import (
+    SUPPORT_NEXT_TRACK,
     SUPPORT_PAUSE,
     SUPPORT_PLAY,
+    SUPPORT_PREVIOUS_TRACK,
     SUPPORT_STOP,
     SUPPORT_TURN_OFF,
     SUPPORT_TURN_ON,
 )
 from homeassistant.const import STATE_IDLE, STATE_OFF, STATE_PAUSED, STATE_PLAYING
 from homeassistant.core import callback
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.util import utcnow
 
 from .const import DOMAIN as KALEIDESCAPE_DOMAIN, NAME as KALEIDESCAPE_NAME
 
 if TYPE_CHECKING:
-    from kaleidescape import Kaleidescape, Device as KaleidescapeDevice
+    from kaleidescape import Device as KaleidescapeDevice, Kaleidescape
 
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
 SUPPORTED_FEATURES = (
-    SUPPORT_TURN_ON | SUPPORT_TURN_OFF | SUPPORT_PLAY | SUPPORT_PAUSE | SUPPORT_STOP
+    SUPPORT_TURN_ON |
+    SUPPORT_TURN_OFF |
+    SUPPORT_PLAY |
+    SUPPORT_PAUSE |
+    SUPPORT_STOP |
+    SUPPORT_NEXT_TRACK |
+    SUPPORT_PREVIOUS_TRACK
 )
 
 KALEIDESCAPE_CONTROLLER_EVENTS = [
@@ -69,6 +78,16 @@ async def async_setup_entry(
         if p.is_movie_player
     ]
     async_add_entities(entities, True)
+
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service("replay", {}, "async_replay")
+    platform.async_register_entity_service("scan_forward", {}, "async_scan_forward")
+    platform.async_register_entity_service("scan_reverse", {}, "async_scan_reverse")
+    platform.async_register_entity_service("select", {}, "async_select")
+    platform.async_register_entity_service("up", {}, "async_up")
+    platform.async_register_entity_service("down", {}, "async_down")
+    platform.async_register_entity_service("left", {}, "async_left")
+    platform.async_register_entity_service("right", {}, "async_right")
 
 
 class KaleidescapeMediaPlayer(MediaPlayerEntity):
@@ -124,6 +143,46 @@ class KaleidescapeMediaPlayer(MediaPlayerEntity):
     async def async_media_stop(self) -> None:
         """Send stop command."""
         await self._device.stop()
+
+    async def async_media_next_track(self):
+        """Send track next command."""
+        await self._device.next()
+
+    async def async_media_previous_track(self):
+        """Send track previous command."""
+        await self._device.previous()
+
+    async def async_replay(self):
+        """Send scan forward command."""
+        await self._device.replay()
+
+    async def async_scan_forward(self):
+        """Send scan forward command."""
+        await self._device.scan_forward()
+
+    async def async_scan_reverse(self):
+        """Send scan reverse command."""
+        await self._device.scan_reverse()
+
+    async def async_select(self):
+        """Send scan reverse command."""
+        await self._device.select()
+
+    async def async_up(self):
+        """Send up command."""
+        await self._device.up()
+
+    async def async_down(self):
+        """Send down command."""
+        await self._device.down()
+
+    async def async_left(self):
+        """Send left command."""
+        await self._device.left()
+
+    async def async_right(self):
+        """Send right command."""
+        await self._device.right()
 
     @property
     def available(self) -> bool:

@@ -1,0 +1,56 @@
+replay:
+  name: Replay
+  description: Replay from back 5 seconds back.
+  target:
+    entity:
+      integration: kaleidescape
+      domain: media_player
+scan_forward:
+  name: Scan forward
+  description: Scan forward
+  target:
+    entity:
+      integration: kaleidescape
+      domain: media_player
+scan_reverse:
+  name: Scan reverse
+  description: Scan reverse
+  target:
+    entity:
+      integration: kaleidescape
+      domain: media_player
+select:
+  name: Select
+  description: Select highlighted item.
+  target:
+    entity:
+      integration: kaleidescape
+      domain: media_player
+up:
+  name: Up
+  description: Highlight item above.
+  target:
+    entity:
+      integration: kaleidescape
+      domain: media_player
+down:
+  name: Down
+  description: Highlight item below.
+  target:
+    entity:
+      integration: kaleidescape
+      domain: media_player
+left:
+  name: Left
+  description: Highlight item to left.
+  target:
+    entity:
+      integration: kaleidescape
+      domain: media_player
+right:
+  name: Right
+  description: Highlight item to right.
+  target:
+    entity:
+      integration: kaleidescape
+      domain: media_player
