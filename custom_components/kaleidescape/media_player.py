@@ -79,16 +79,6 @@ async def async_setup_entry(
     ]
     async_add_entities(entities, True)
 
-    platform = entity_platform.async_get_current_platform()
-    platform.async_register_entity_service("replay", {}, "async_replay")
-    platform.async_register_entity_service("scan_forward", {}, "async_scan_forward")
-    platform.async_register_entity_service("scan_reverse", {}, "async_scan_reverse")
-    platform.async_register_entity_service("select", {}, "async_select")
-    platform.async_register_entity_service("up", {}, "async_up")
-    platform.async_register_entity_service("down", {}, "async_down")
-    platform.async_register_entity_service("left", {}, "async_left")
-    platform.async_register_entity_service("right", {}, "async_right")
-
 
 class KaleidescapeMediaPlayer(MediaPlayerEntity):
     """Representation of a Kaleidescape device."""

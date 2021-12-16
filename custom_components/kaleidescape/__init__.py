@@ -10,6 +10,7 @@ from kaleidescape import Kaleidescape
 from kaleidescape.error import KaleidescapeError
 
 from homeassistant.components.media_player import DOMAIN as MEDIA_PLAYER_DOMAIN
+from homeassistant.components.remote import DOMAIN as REMOTE_DOMAIN
 from homeassistant.const import CONF_HOST, CONF_ID, EVENT_HOMEASSISTANT_STOP
 from homeassistant.exceptions import ConfigEntryNotReady
 
@@ -48,6 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = controller
 
     await hass.config_entries.async_forward_entry_setup(entry, MEDIA_PLAYER_DOMAIN)
+    await hass.config_entries.async_forward_entry_setup(entry, REMOTE_DOMAIN)
 
     return True
 
