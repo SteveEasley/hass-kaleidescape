@@ -197,6 +197,8 @@ class KaleidescapeMediaPlayer(MediaPlayerEntity):
         """Returns additional attributes about the state."""
         return {
             "media_location": self._device.automation.movie_location,
+            "play_status": self._device.movie.play_status,
+            "play_speed": self._device.movie.play_speed,
             "video_mode": self._device.automation.video_mode,
             "video_color_eotf": self._device.automation.video_color_eotf,
             "video_color_space": self._device.automation.video_color_space,
