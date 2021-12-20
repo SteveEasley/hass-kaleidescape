@@ -69,9 +69,13 @@ class KaleidescapeRemote(RemoteEntity):
                 await self._device.left()
             elif single_command == "right":
                 await self._device.right()
+            elif single_command == "cancel":
+                await self._device.cancel()
             elif single_command == "replay":
                 await self._device.replay()
             elif single_command == "scan_forward":
                 await self._device.scan_forward()
             elif single_command == "scan_reverse":
                 await self._device.scan_reverse()
+            elif single_command == "go_movie_list":
+                await self._device.go_movie_list()
