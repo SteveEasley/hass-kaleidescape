@@ -79,3 +79,5 @@ class KaleidescapeRemote(RemoteEntity):
                 await self._device.scan_reverse()
             elif single_command == "go_movie_covers":
                 await self._device.go_movie_covers()
+            elif single_command == "menu_toggle":
+                await self._device.menu_toggle()
