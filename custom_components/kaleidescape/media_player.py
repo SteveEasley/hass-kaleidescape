@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import logging
 from typing import TYPE_CHECKING
 
@@ -20,32 +19,30 @@ from homeassistant.components.media_player.const import (
 )
 from homeassistant.const import STATE_IDLE, STATE_OFF, STATE_PAUSED, STATE_PLAYING
 from homeassistant.core import callback
-from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.util import utcnow
+from homeassistant.util.dt import utcnow
 
 from .const import DOMAIN as KALEIDESCAPE_DOMAIN, NAME as KALEIDESCAPE_NAME
 
 if TYPE_CHECKING:
-    from kaleidescape import Device as KaleidescapeDevice, Kaleidescape
+    from datetime import datetime
+
+    from kaleidescape import Device as KaleidescapeDevice
 
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
 
 SUPPORTED_FEATURES = (
-    SUPPORT_TURN_ON |
-    SUPPORT_TURN_OFF |
-    SUPPORT_PLAY |
-    SUPPORT_PAUSE |
-    SUPPORT_STOP |
-    SUPPORT_NEXT_TRACK |
-    SUPPORT_PREVIOUS_TRACK
+    SUPPORT_TURN_ON
+    | SUPPORT_TURN_OFF
+    | SUPPORT_PLAY
+    | SUPPORT_PAUSE
+    | SUPPORT_STOP
+    | SUPPORT_NEXT_TRACK
+    | SUPPORT_PREVIOUS_TRACK
 )
-
-KALEIDESCAPE_CONTROLLER_EVENTS = [
-    kaleidescape_const.EVENT_CONTROLLER_CONNECTED,
-    kaleidescape_const.EVENT_CONTROLLER_DISCONNECTED,
-]
 
 KALEIDESCAPE_DEVICE_EVENTS = [
     kaleidescape_const.DEVICE_POWER_STATE,
@@ -68,51 +65,34 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
-):
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+) -> None:
     """Set up the platform from a config entry."""
-    controller: Kaleidescape = hass.data[KALEIDESCAPE_DOMAIN][entry.entry_id]
-    entities = [
-        KaleidescapeMediaPlayer(p)
-        for p in await controller.get_devices()
-        if p.is_movie_player
-    ]
+    entities = [KaleidescapeMediaPlayer(hass.data[KALEIDESCAPE_DOMAIN][entry.entry_id])]
     async_add_entities(entities, True)
 
 
 class KaleidescapeMediaPlayer(MediaPlayerEntity):
     """Representation of a Kaleidescape device."""
 
-    def __init__(self, device) -> None:
+    def __init__(self, device: KaleidescapeDevice) -> None:
         """Initialize media player."""
-        self._device: KaleidescapeDevice = device
+        self._device = device
+
+        self._attr_should_poll = False
+        self._attr_unique_id = device.serial_number
+        self._attr_name = f"{KALEIDESCAPE_NAME} {device.system.friendly_name}"
+        self._attr_supported_features = SUPPORTED_FEATURES
 
     async def async_added_to_hass(self) -> None:
-        # Handle update signals coming from Kaleidescape controller
+        """Register update listener."""
+
         @callback
-        def _controller_update(event: str) -> None:
-            """Handle controller state changes."""
+        def _update(event: str) -> None:
+            """Handle device state changes."""
             self.async_write_ha_state()
 
-        self.async_on_remove(
-            self._device.dispatcher.connect(
-                kaleidescape_const.SIGNAL_CONTROLLER_EVENT, _controller_update
-            ).disconnect
-        )
-
-        # Handle update signals coming from Kaleidescape devices
-        @callback
-        def _device_update(device_id: str, event: str) -> None:
-            """Handle device state changes."""
-            if self._device.has_device_id(device_id):
-                if event in KALEIDESCAPE_DEVICE_EVENTS:
-                    self.async_write_ha_state()
-
-        self.async_on_remove(
-            self._device.dispatcher.connect(
-                kaleidescape_const.SIGNAL_DEVICE_EVENT, _device_update
-            ).disconnect
-        )
+        self.async_on_remove(self._device.dispatcher.connect(_update).disconnect)
 
     async def async_turn_on(self) -> None:
         """Send leave standby command."""
@@ -142,38 +122,6 @@ class KaleidescapeMediaPlayer(MediaPlayerEntity):
         """Send track previous command."""
         await self._device.previous()
 
-    async def async_replay(self):
-        """Send scan forward command."""
-        await self._device.replay()
-
-    async def async_scan_forward(self):
-        """Send scan forward command."""
-        await self._device.scan_forward()
-
-    async def async_scan_reverse(self):
-        """Send scan reverse command."""
-        await self._device.scan_reverse()
-
-    async def async_select(self):
-        """Send scan reverse command."""
-        await self._device.select()
-
-    async def async_up(self):
-        """Send up command."""
-        await self._device.up()
-
-    async def async_down(self):
-        """Send down command."""
-        await self._device.down()
-
-    async def async_left(self):
-        """Send left command."""
-        await self._device.left()
-
-    async def async_right(self):
-        """Send right command."""
-        await self._device.right()
-
     @property
     def available(self) -> bool:
         """Returns if device is available."""
@@ -189,7 +137,7 @@ class KaleidescapeMediaPlayer(MediaPlayerEntity):
             manufacturer=KALEIDESCAPE_NAME,
             sw_version=f"{self._device.system.kos_version}",
             suggested_area="Theater",
-            configuration_url=f"http://{self._device.connection.ip_address}",
+            configuration_url=f"http://{self._device.host}",
         )
 
     @property
@@ -215,16 +163,6 @@ class KaleidescapeMediaPlayer(MediaPlayerEntity):
         }
 
     @property
-    def name(self) -> str:
-        """Return the name of the device."""
-        return f"{self._device.system.friendly_name} {KALEIDESCAPE_NAME}"
-
-    @property
-    def should_poll(self) -> bool:
-        """No polling needed for this device."""
-        return False
-
-    @property
     def state(self) -> str:
         """State of device."""
         if self._device.power.state == kaleidescape_const.DEVICE_POWER_STATE_STANDBY:
@@ -236,16 +174,6 @@ class KaleidescapeMediaPlayer(MediaPlayerEntity):
         return STATE_IDLE
 
     @property
-    def supported_features(self) -> int:
-        """Flag media device features that are supported."""
-        return SUPPORTED_FEATURES
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID for device."""
-        return self._device.serial_number
-
-    @property
     def media_content_id(self) -> str | None:
         """Content ID of current playing media."""
         if self._device.movie.handle:
@@ -255,9 +183,7 @@ class KaleidescapeMediaPlayer(MediaPlayerEntity):
     @property
     def media_content_type(self) -> str | None:
         """Content type of current playing media."""
-        if self._device.movie.media_type:
-            return self._device.movie.media_type
-        return None
+        return self._device.movie.media_type
 
     @property
     def media_duration(self) -> int | None:

@@ -1,46 +1,42 @@
-"""Support for the DIRECTV remote."""
+"""Kaleidescape remote."""
 from __future__ import annotations
 
-from collections.abc import Iterable
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from kaleidescape import const as kaleidescape_const
 
 from homeassistant.components.remote import RemoteEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN as KALEIDESCAPE_DOMAIN, NAME as KALEIDESCAPE_NAME
 
 if TYPE_CHECKING:
-    from kaleidescape import Device as KaleidescapeDevice, Kaleidescape
+    from collections.abc import Iterable
+    from typing import Any
+
+    from kaleidescape import Device as KaleidescapeDevice
 
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up the platform from a config entry."""
-    controller: Kaleidescape = hass.data[KALEIDESCAPE_DOMAIN][entry.entry_id]
-    entities = [
-        KaleidescapeRemote(p)
-        for p in await controller.get_devices()
-        if p.is_movie_player
-    ]
+    entities = [KaleidescapeRemote(hass.data[KALEIDESCAPE_DOMAIN][entry.entry_id])]
     async_add_entities(entities, True)
 
 
 class KaleidescapeRemote(RemoteEntity):
     """Representation of a Kaleidescape device."""
 
-    def __init__(self, device) -> None:
+    def __init__(self, device: KaleidescapeDevice) -> None:
         """Initialize remote."""
-        self._device: KaleidescapeDevice = device
+        self._device = device
 
     @property
     def unique_id(self) -> str:
@@ -50,11 +46,20 @@ class KaleidescapeRemote(RemoteEntity):
     @property
     def name(self) -> str:
         """Return the name of the device."""
-        return f"{self._device.system.friendly_name} {KALEIDESCAPE_NAME}"
+        return f"{KALEIDESCAPE_NAME} {self._device.system.friendly_name}"
 
+    @property
     def is_on(self) -> bool:
         """Return true if device is on."""
         return self._device.power.state == kaleidescape_const.DEVICE_POWER_STATE_ON
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the device on."""
+        await self._device.leave_standby()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn the device off."""
+        await self._device.enter_standby()
 
     async def async_send_command(self, command: Iterable[str], **kwargs: Any) -> None:
         """Send a command to a device."""

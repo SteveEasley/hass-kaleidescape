@@ -1,10 +1,7 @@
 """Tests for Kaleidescape media player platform."""
 
-from __future__ import annotations
-
 import asyncio
-from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 from kaleidescape import const as kaleidescape_const
 from kaleidescape.device import Movie
@@ -12,8 +9,10 @@ from kaleidescape.device import Movie
 from homeassistant.components.media_player.const import DOMAIN as MEDIA_PLAYER_DOMAIN
 from homeassistant.const import (
     ATTR_ENTITY_ID,
+    SERVICE_MEDIA_NEXT_TRACK,
     SERVICE_MEDIA_PAUSE,
     SERVICE_MEDIA_PLAY,
+    SERVICE_MEDIA_PREVIOUS_TRACK,
     SERVICE_MEDIA_STOP,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
@@ -22,55 +21,49 @@ from homeassistant.const import (
     STATE_PAUSED,
     STATE_PLAYING,
 )
+from homeassistant.core import HomeAssistant
 
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
+from . import MOCK_SERIAL
 
-    from tests.common import MockConfigEntry
+from tests.common import MockConfigEntry
+
+ENTITY_ID = f"media_player.kaleidescape_device_{MOCK_SERIAL}"
+FRIENDLY_NAME = f"Kaleidescape Device {MOCK_SERIAL}"
 
 
 async def test_entity(
     hass: HomeAssistant,
-    mock_kaleidescape: MagicMock,
+    mock_device: MagicMock,
     mock_integration: MockConfigEntry,
 ) -> None:
     """Test entity attributes."""
-    media_player = hass.states.get("media_player.device_123_kaleidescape")
-    assert media_player.state == STATE_OFF
-    assert media_player.attributes["friendly_name"] == "Device 123 Kaleidescape"
-
-    # For coverage report
-    mock_kaleidescape.dispatcher.send(
-        kaleidescape_const.SIGNAL_CONTROLLER_EVENT,
-        kaleidescape_const.EVENT_CONTROLLER_UPDATED,
-    )
-    await hass.async_block_till_done()
+    entity = hass.states.get(ENTITY_ID)
+    assert entity is not None
+    assert entity.state == STATE_OFF
+    assert entity.attributes["friendly_name"] == FRIENDLY_NAME
 
 
 async def test_update_state(
     hass: HomeAssistant,
-    mock_kaleidescape: MagicMock,
+    mock_device: MagicMock,
     mock_integration: MockConfigEntry,
 ) -> None:
     """Tests dispatched signals update player."""
-    device: AsyncMock = await mock_kaleidescape.get_local_device()
-    entity = hass.states.get("media_player.device_123_kaleidescape")
+    entity = hass.states.get(ENTITY_ID)
+    assert entity is not None
     assert entity.state == STATE_OFF
 
-    # Devices turns on
-    device.power.state = kaleidescape_const.DEVICE_POWER_STATE_ON
-    mock_kaleidescape.dispatcher.send(
-        kaleidescape_const.SIGNAL_DEVICE_EVENT,
-        "#123",
-        kaleidescape_const.DEVICE_POWER_STATE,
-    )
+    # Device turns on
+    mock_device.power.state = kaleidescape_const.DEVICE_POWER_STATE_ON
+    mock_device.dispatcher.send(kaleidescape_const.DEVICE_POWER_STATE)
     await asyncio.sleep(0)
     await hass.async_block_till_done()
-    entity = hass.states.get("media_player.device_123_kaleidescape")
+    entity = hass.states.get(ENTITY_ID)
+    assert entity is not None
     assert entity.state == STATE_IDLE
 
     # Devices starts playing
-    device.movie = Movie(
+    mock_device.movie = Movie(
         handle="handle",
         title="title",
         cover="cover",
@@ -98,114 +91,97 @@ async def test_update_state(
         chapter_length=1,
         chapter_location=1,
     )
-    mock_kaleidescape.dispatcher.send(
-        kaleidescape_const.SIGNAL_DEVICE_EVENT, "#123", kaleidescape_const.PLAY_STATUS
-    )
+    mock_device.dispatcher.send(kaleidescape_const.PLAY_STATUS)
     await asyncio.sleep(0)
     await hass.async_block_till_done()
-    entity = hass.states.get("media_player.device_123_kaleidescape")
+    entity = hass.states.get(ENTITY_ID)
+    assert entity is not None
     assert entity.state == STATE_PLAYING
 
     # Devices pauses playing
-    device.movie.play_status = kaleidescape_const.PLAY_STATUS_PAUSED
-    mock_kaleidescape.dispatcher.send(
-        kaleidescape_const.SIGNAL_DEVICE_EVENT, "#123", kaleidescape_const.PLAY_STATUS
-    )
+    mock_device.movie.play_status = kaleidescape_const.PLAY_STATUS_PAUSED
+    mock_device.dispatcher.send(kaleidescape_const.PLAY_STATUS)
     await asyncio.sleep(0)
     await hass.async_block_till_done()
-    entity = hass.states.get("media_player.device_123_kaleidescape")
+    entity = hass.states.get(ENTITY_ID)
+    assert entity is not None
     assert entity.state == STATE_PAUSED
 
 
-async def test_turn_on(
+async def test_services(
     hass: HomeAssistant,
-    mock_kaleidescape: MagicMock,
+    mock_device: MagicMock,
     mock_integration: MockConfigEntry,
 ) -> None:
-    """Test turn on service call."""
-    device: AsyncMock = await mock_kaleidescape.get_local_device()
+    """Test service calls."""
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_TURN_ON,
-        {ATTR_ENTITY_ID: "media_player.device_123_kaleidescape"},
+        {ATTR_ENTITY_ID: ENTITY_ID},
         blocking=True,
     )
-    assert device.leave_standby.call_count == 1
+    assert mock_device.leave_standby.call_count == 1
 
-
-async def test_turn_off(
-    hass: HomeAssistant,
-    mock_kaleidescape: MagicMock,
-    mock_integration: MockConfigEntry,
-) -> None:
-    """Test turn off service call."""
-    device: AsyncMock = await mock_kaleidescape.get_local_device()
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_TURN_OFF,
-        {ATTR_ENTITY_ID: "media_player.device_123_kaleidescape"},
+        {ATTR_ENTITY_ID: ENTITY_ID},
         blocking=True,
     )
-    assert device.enter_standby.call_count == 1
+    assert mock_device.enter_standby.call_count == 1
 
-
-async def test_play(
-    hass: HomeAssistant,
-    mock_kaleidescape: MagicMock,
-    mock_integration: MockConfigEntry,
-) -> None:
-    """Test play service call."""
-    device: AsyncMock = await mock_kaleidescape.get_local_device()
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_MEDIA_PLAY,
-        {ATTR_ENTITY_ID: "media_player.device_123_kaleidescape"},
+        {ATTR_ENTITY_ID: ENTITY_ID},
         blocking=True,
     )
-    assert device.play.call_count == 1
+    assert mock_device.play.call_count == 1
 
-
-async def test_pause(
-    hass: HomeAssistant,
-    mock_kaleidescape: MagicMock,
-    mock_integration: MockConfigEntry,
-) -> None:
-    """Test pause service call."""
-    device: AsyncMock = await mock_kaleidescape.get_local_device()
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_MEDIA_PAUSE,
-        {ATTR_ENTITY_ID: "media_player.device_123_kaleidescape"},
+        {ATTR_ENTITY_ID: ENTITY_ID},
         blocking=True,
     )
-    assert device.pause.call_count == 1
+    assert mock_device.pause.call_count == 1
 
-
-async def test_stop(
-    hass: HomeAssistant,
-    mock_kaleidescape: MagicMock,
-    mock_integration: MockConfigEntry,
-) -> None:
-    """Test stop service call."""
-    device: AsyncMock = await mock_kaleidescape.get_local_device()
     await hass.services.async_call(
         MEDIA_PLAYER_DOMAIN,
         SERVICE_MEDIA_STOP,
-        {ATTR_ENTITY_ID: "media_player.device_123_kaleidescape"},
+        {ATTR_ENTITY_ID: ENTITY_ID},
         blocking=True,
     )
-    assert device.stop.call_count == 1
+    assert mock_device.stop.call_count == 1
+
+    await hass.services.async_call(
+        MEDIA_PLAYER_DOMAIN,
+        SERVICE_MEDIA_NEXT_TRACK,
+        {ATTR_ENTITY_ID: ENTITY_ID},
+        blocking=True,
+    )
+    assert mock_device.next.call_count == 1
+
+    await hass.services.async_call(
+        MEDIA_PLAYER_DOMAIN,
+        SERVICE_MEDIA_PREVIOUS_TRACK,
+        {ATTR_ENTITY_ID: ENTITY_ID},
+        blocking=True,
+    )
+    assert mock_device.previous.call_count == 1
 
 
 async def test_device(
     hass: HomeAssistant,
-    mock_kaleidescape: MagicMock,
+    mock_device: MagicMock,
     mock_integration: MockConfigEntry,
 ) -> None:
     """Test device attributes."""
     device_registry = await hass.helpers.device_registry.async_get_registry()
-    device = device_registry.async_get_device(identifiers={("kaleidescape", "123")})
-    assert device.name == "Device 123 Kaleidescape"
+    device = device_registry.async_get_device(
+        identifiers={("kaleidescape", MOCK_SERIAL)}
+    )
+    assert device.name == FRIENDLY_NAME
     assert device.model == "Strato"
     assert device.sw_version == "10.4.2-19218"
     assert device.manufacturer == "Kaleidescape"

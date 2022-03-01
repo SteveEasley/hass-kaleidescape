@@ -1,8 +1,14 @@
 {
   "domain": "kaleidescape",
   "name": "Kaleidescape",
-  "version": "2021.12.1-beta.6",
+  "version": "2021.12.1-beta.7",
   "config_flow": true,
+  "ssdp": [
+    {
+      "manufacturer": "Kaleidescape, Inc.",
+      "deviceType": "schemas-upnp-org:device:Basic:1"
+    }
+  ],
   "documentation": "https://www.home-assistant.io/integrations/kaleidescape",
   "requirements": ["git+https://github.com/SteveEasley/pykaleidescape.git@dev#pykaleidescape==2021.12.0-beta"],
   "codeowners": [

@@ -3,92 +3,84 @@
 from __future__ import annotations
 
 import logging
-import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
-from kaleidescape import Kaleidescape
-from kaleidescape.error import KaleidescapeError
+from kaleidescape import Device as KaleidescapeDevice, KaleidescapeError
 
-from homeassistant.components.media_player import DOMAIN as MEDIA_PLAYER_DOMAIN
-from homeassistant.components.remote import DOMAIN as REMOTE_DOMAIN
-from homeassistant.const import CONF_HOST, CONF_ID, EVENT_HOMEASSISTANT_STOP
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.const import CONF_HOST, EVENT_HOMEASSISTANT_STOP, Platform
+from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 
-from .const import DOMAIN, MANAGER, NAME as KALEIDESCAPE_NAME
+from .const import DOMAIN
 
 if TYPE_CHECKING:
-    from kaleidescape import SystemInfo
-
     from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
+    from homeassistant.core import HomeAssistant, Event
 
 _LOGGER = logging.getLogger(__name__)
+
+PLATFORMS = [Platform.MEDIA_PLAYER, Platform.REMOTE]
+
+
+class DeviceInfo(NamedTuple):
+    """Metadata for a Kaleidescape device"""
+
+    host: str
+    serial: str
+    name: str
+    model: str
+    server_only: bool
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Kaleidescape from a config entry."""
-    hass.data.setdefault(DOMAIN, {})
-
-    controller = Kaleidescape(entry.data[CONF_HOST], timeout=5)
+    device = KaleidescapeDevice(
+        entry.data[CONF_HOST], timeout=5, reconnect=True, reconnect_delay=5
+    )
 
     try:
-        await controller.connect(entry.data[CONF_ID], auto_reconnect=True)
-        await controller.load_devices()
+        await device.connect()
     except (KaleidescapeError, ConnectionError) as err:
-        await controller.disconnect()
+        await device.disconnect()
         _LOGGER.error("Unable to connect: %s", err)
         raise ConfigEntryNotReady from err
 
-    async def disconnect(event: str):
-        await controller.disconnect()
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = device
+
+    async def disconnect(event: Event):
+        await device.disconnect()
 
     entry.async_on_unload(
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, disconnect)
     )
 
-    hass.data[DOMAIN][entry.entry_id] = controller
-
-    await hass.config_entries.async_forward_entry_setup(entry, MEDIA_PLAYER_DOMAIN)
-    await hass.config_entries.async_forward_entry_setup(entry, REMOTE_DOMAIN)
+    hass.config_entries.async_setup_platforms(entry, PLATFORMS)
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload config entry."""
-    controller: Kaleidescape = hass.data[DOMAIN][entry.entry_id]
-    await controller.disconnect()
-    await hass.config_entries.async_forward_entry_unload(entry, MEDIA_PLAYER_DOMAIN)
-    del hass.data[DOMAIN][entry.entry_id]
-    return True
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        await hass.data[DOMAIN][entry.entry_id].disconnect()
+        hass.data[DOMAIN].pop(entry.entry_id)
+    return unload_ok
 
 
-async def async_migrate_entry(hass, entry: ConfigEntry):
-    """Migrate old entries."""
-    _LOGGER.debug("Migrating from version %s", entry.version)
+class UnsupportedError(HomeAssistantError):
+    """Error for unsupported device types."""
 
-    if entry.version == 1:
-        system = await get_system_info(entry.data[CONF_HOST])
-        entry.version = 2
-        hass.config_entries.async_update_entry(
-            entry,
-            unique_id=system.system_id,
-            title=f"Kaleidescape ({system.friendly_name})",
-            data={CONF_ID: system.system_id, CONF_HOST: system.ip_address},
+
+async def validate_host(host: str) -> DeviceInfo:
+    """Validate device host."""
+    device = KaleidescapeDevice(host)
+    try:
+        await device.connect()
+        return DeviceInfo(
+            host=device.host,
+            serial=device.system.serial_number,
+            name=device.system.friendly_name,
+            model=device.system.type,
+            server_only=device.is_server_only,
         )
-
-    _LOGGER.info("Migration to version %s successful", entry.version)
-
-    return True
-
-
-def validate_host(host: str) -> bool:
-    """Returns if hostname contains valid characters."""
-    return re.search(r"^[0-9A-Za-z.\-]+$", host) is not None
-
-
-async def get_system_info(host: str) -> SystemInfo:
-    """Returns system info if host is valid."""
-    controller = Kaleidescape(host, timeout=5)
-    system_id = await controller.discover()
-    return controller.systems[system_id]
+    finally:
+        await device.disconnect()

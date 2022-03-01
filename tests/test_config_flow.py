@@ -1,29 +1,27 @@
 """Tests for Kaleidescape config flow."""
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
+import dataclasses
 from unittest.mock import AsyncMock
 
-from homeassistant.components.kaleidescape.const import DEFAULT_HOST, DOMAIN
-from homeassistant.config_entries import SOURCE_USER
-from homeassistant.const import CONF_HOST, CONF_ID
+from homeassistant.components.kaleidescape.const import DOMAIN
+from homeassistant.config_entries import SOURCE_SSDP, SOURCE_USER
+from homeassistant.const import CONF_HOST
+from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import (
     RESULT_TYPE_ABORT,
     RESULT_TYPE_CREATE_ENTRY,
     RESULT_TYPE_FORM,
 )
 
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
+from . import MOCK_HOST, MOCK_SSDP_DISCOVERY_INFO
 
-    from tests.common import MockConfigEntry
+from tests.common import MockConfigEntry
 
 
-async def test_config_flow_success(
-    hass: HomeAssistant, mock_kaleidescape: AsyncMock
+async def test_user_config_flow_success(
+    hass: HomeAssistant, mock_device: AsyncMock
 ) -> None:
-    """Test config flow success."""
+    """Test user config flow success."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
@@ -31,61 +29,23 @@ async def test_config_flow_success(
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={CONF_HOST: "127.0.0.1"}
+        result["flow_id"], user_input={CONF_HOST: MOCK_HOST}
     )
+    await hass.async_block_till_done()
+
     assert result["type"] == RESULT_TYPE_CREATE_ENTRY
     assert "data" in result
-    assert result["data"][CONF_ID] == "123456789"
-    assert result["data"][CONF_HOST] == "127.0.0.1"
+    assert result["data"][CONF_HOST] == MOCK_HOST
 
 
-async def test_config_flow_host_default(
-    hass: HomeAssistant, mock_kaleidescape: AsyncMock
+async def test_user_config_flow_bad_connect_errors(
+    hass: HomeAssistant, mock_device: AsyncMock
 ) -> None:
-    """Test config flow default host."""
+    """Test errors when connection error occurs."""
+    mock_device.connect.side_effect = ConnectionError
+
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={}
-    )
-    assert result["type"] == RESULT_TYPE_CREATE_ENTRY
-    assert "data" in result
-    assert result["data"][CONF_ID] == "123456789"
-    assert result["data"][CONF_HOST] == "127.0.0.1"
-
-
-async def test_config_flow_host_empty(
-    hass: HomeAssistant, mock_kaleidescape: AsyncMock
-) -> None:
-    """Test errors when host is an empty string."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}, data={"host": ""}
-    )
-    assert result["type"] == RESULT_TYPE_FORM
-    assert result["step_id"] == "user"
-    assert result["errors"] == {"base": "invalid_host"}
-
-
-async def test_config_flow_host_bad_characters(
-    hass: HomeAssistant, mock_kaleidescape: AsyncMock
-) -> None:
-    """Test errors when host has bad characters."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}, data={"host": "b@d"}
-    )
-    assert result["type"] == RESULT_TYPE_FORM
-    assert result["step_id"] == "user"
-    assert result["errors"] == {"base": "invalid_host"}
-
-
-async def test_config_flow_host_bad_connect(
-    hass: HomeAssistant, mock_kaleidescape: AsyncMock
-) -> None:
-    """Test errors when cant connect to host."""
-    mock_kaleidescape.discover.side_effect = ConnectionError
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}, data={"host": "127.0.0.1"}
+        DOMAIN, context={"source": SOURCE_USER}, data={CONF_HOST: MOCK_HOST}
     )
 
     assert result["type"] == RESULT_TYPE_FORM
@@ -93,12 +53,93 @@ async def test_config_flow_host_bad_connect(
     assert result["errors"] == {"base": "cannot_connect"}
 
 
-async def test_config_flow_device_exists_abort(
-    hass: HomeAssistant, mock_kaleidescape: AsyncMock, mock_integration: MockConfigEntry
+async def test_user_config_flow_unsupported_device_errors(
+    hass: HomeAssistant, mock_device: AsyncMock
 ) -> None:
-    """Test flow aborts if device already configured."""
+    """Test errors when connecting to unsupported device."""
+    mock_device.is_server_only = True
+
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}, data={CONF_HOST: "127.0.0.1"}
+        DOMAIN, context={"source": SOURCE_USER}, data={CONF_HOST: MOCK_HOST}
+    )
+
+    assert result["type"] == RESULT_TYPE_FORM
+    assert result["step_id"] == "user"
+    assert result["errors"] == {"base": "unsupported"}
+
+
+async def test_user_config_flow_device_exists_abort(
+    hass: HomeAssistant, mock_device: AsyncMock, mock_integration: MockConfigEntry
+) -> None:
+    """Test flow aborts when device already configured."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}, data={CONF_HOST: MOCK_HOST}
     )
     assert result["type"] == RESULT_TYPE_ABORT
     assert result["reason"] == "already_configured"
+
+
+async def test_ssdp_config_flow_success(
+    hass: HomeAssistant, mock_device: AsyncMock
+) -> None:
+    """Test ssdp config flow success."""
+    discovery_info = dataclasses.replace(MOCK_SSDP_DISCOVERY_INFO)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_SSDP}, data=discovery_info
+    )
+    assert result["type"] == RESULT_TYPE_FORM
+    assert result["step_id"] == "discovery_confirm"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={}
+    )
+    await hass.async_block_till_done()
+
+    assert result["type"] == RESULT_TYPE_CREATE_ENTRY
+    assert "data" in result
+    assert result["data"][CONF_HOST] == MOCK_HOST
+
+
+async def test_ssdp_config_flow_bad_connect_aborts(
+    hass: HomeAssistant, mock_device: AsyncMock
+) -> None:
+    """Test abort when connection error occurs."""
+    mock_device.connect.side_effect = ConnectionError
+
+    discovery_info = dataclasses.replace(MOCK_SSDP_DISCOVERY_INFO)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_SSDP}, data=discovery_info
+    )
+
+    assert result["type"] == RESULT_TYPE_ABORT
+    assert result["reason"] == "cannot_connect"
+
+
+async def test_ssdp_config_flow_unsupported_device_aborts(
+    hass: HomeAssistant, mock_device: AsyncMock
+) -> None:
+    """Test abort when connecting to unsupported device."""
+    mock_device.is_server_only = True
+
+    discovery_info = dataclasses.replace(MOCK_SSDP_DISCOVERY_INFO)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_SSDP}, data=discovery_info
+    )
+
+    assert result["type"] == RESULT_TYPE_ABORT
+    assert result["reason"] == "unsupported"
+
+
+async def test_ssdp_config_flow_unknown_error_aborts(
+    hass: HomeAssistant, mock_device: AsyncMock
+) -> None:
+    """Test abort when unknown error occurs."""
+    mock_device.connect.side_effect = Exception
+
+    discovery_info = dataclasses.replace(MOCK_SSDP_DISCOVERY_INFO)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_SSDP}, data=discovery_info
+    )
+
+    assert result["type"] == RESULT_TYPE_ABORT
+    assert result["reason"] == "unknown"
