@@ -8,13 +8,12 @@ from kaleidescape import const as kaleidescape_const
 
 from homeassistant.components.remote import RemoteEntity
 
-from .const import DOMAIN as KALEIDESCAPE_DOMAIN, NAME as KALEIDESCAPE_NAME
+from .entity import KaleidescapeEntity
+from .const import DOMAIN as KALEIDESCAPE_DOMAIN
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Any
-
-    from kaleidescape import Device as KaleidescapeDevice
 
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
@@ -31,22 +30,8 @@ async def async_setup_entry(
     async_add_entities(entities, True)
 
 
-class KaleidescapeRemote(RemoteEntity):
+class KaleidescapeRemote(KaleidescapeEntity, RemoteEntity):
     """Representation of a Kaleidescape device."""
-
-    def __init__(self, device: KaleidescapeDevice) -> None:
-        """Initialize remote."""
-        self._device = device
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID for device."""
-        return self._device.serial_number
-
-    @property
-    def name(self) -> str:
-        """Return the name of the device."""
-        return f"{KALEIDESCAPE_NAME} {self._device.system.friendly_name}"
 
     @property
     def is_on(self) -> bool:

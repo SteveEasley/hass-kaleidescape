@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 from kaleidescape import Device as KaleidescapeDevice, KaleidescapeError
 
@@ -14,21 +15,11 @@ from .const import DOMAIN
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant, Event
+    from homeassistant.core import Event, HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.MEDIA_PLAYER, Platform.REMOTE]
-
-
-class DeviceInfo(NamedTuple):
-    """Metadata for a Kaleidescape device"""
-
-    host: str
-    serial: str
-    name: str
-    model: str
-    server_only: bool
+PLATFORMS = [Platform.MEDIA_PLAYER, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -41,12 +32,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await device.connect()
     except (KaleidescapeError, ConnectionError) as err:
         await device.disconnect()
-        _LOGGER.error("Unable to connect: %s", err)
-        raise ConfigEntryNotReady from err
+        raise ConfigEntryNotReady(
+            f"Unable to connect to {entry.data[CONF_HOST]}: {err}"
+        ) from err
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = device
 
-    async def disconnect(event: Event):
+    async def disconnect(event: Event) -> None:
         await device.disconnect()
 
     entry.async_on_unload(
@@ -66,21 +58,39 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
+@dataclass
+class KaleidescapeDeviceInfo:
+    """Metadata for a Kaleidescape device."""
+
+    host: str
+    serial: str
+    name: str
+    model: str
+    server_only: bool
+
+
 class UnsupportedError(HomeAssistantError):
     """Error for unsupported device types."""
 
 
-async def validate_host(host: str) -> DeviceInfo:
+async def validate_host(host: str) -> KaleidescapeDeviceInfo:
     """Validate device host."""
     device = KaleidescapeDevice(host)
+
     try:
         await device.connect()
-        return DeviceInfo(
-            host=device.host,
-            serial=device.system.serial_number,
-            name=device.system.friendly_name,
-            model=device.system.type,
-            server_only=device.is_server_only,
-        )
-    finally:
+    except (KaleidescapeError, ConnectionError):
         await device.disconnect()
+        raise
+
+    info = KaleidescapeDeviceInfo(
+        host=device.host,
+        serial=device.system.serial_number,
+        name=device.system.friendly_name,
+        model=device.system.type,
+        server_only=device.is_server_only,
+    )
+
+    await device.disconnect()
+
+    return info
