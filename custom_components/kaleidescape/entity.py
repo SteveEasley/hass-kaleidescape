@@ -39,7 +39,8 @@ class KaleidescapeEntity(Entity):
     async def async_added_to_hass(self) -> None:
         """Register update listener."""
 
-        async def _update(event: str) -> None:
+        @callback
+        def _update(event: str) -> None:
             """Handle device state changes."""
             self.async_write_ha_state()
 
